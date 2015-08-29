@@ -16,15 +16,20 @@ define('PLUG_VERSION', '1.0');
 global $ajaxurl;
 $ajaxurl = admin_url('admin-ajax.php');
 
+global $TestPlugin;
+$TestPlugin = new TestPlugin();
+
 class TestPlugin
 {
 	function TestPlugin()
 	{
-		register_activation_hook(__FILE__, array('TestPlugin', 'activation'));
-		register_deactivation_hook(__FILE__, array('TestPlugin', 'deactivation'));
-		register_uninstall_hook(__FILE__, array('TestPlugin', 'uninstall'));
+		global $wp, $wpdb, $TestPlugin;
+		//register_activation_hook(__FILE__, array('TestPlugin', 'activation'));
+		//register_deactivation_hook(__FILE__, array('TestPlugin', 'deactivation'));
+		//register_uninstall_hook(__FILE__, array('TestPlugin', 'uninstall'));
 		
 		add_action('admin_menu', array(&$this, 'admin_menu'), 27);
+		require_once(PLUG_DIR . "/front-page.php");
 	}
 	function get_free_menu_position($start, $increment = 0.1)
 	{
@@ -68,7 +73,7 @@ class TestPlugin
 	}
 	function route()
 	{
-		global $wp, $wpdb;
+		global $wp, $wpdb, $TestPlugin;
 		if( isset($_REQUEST['page']) )
 		{
 			
@@ -105,7 +110,7 @@ class TestPlugin
 		if (!isset($plugin_ver) || $plugin_ver == '')
 		{
 			require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-			global $wp, $wpdb;
+			global $wp, $wpdb, $TestPlugin;
 			$charset_collate = '';
 			if ($wpdb->has_cap('collation')) {
 				if (!empty($wpdb->charset)) {
@@ -118,7 +123,7 @@ class TestPlugin
 			update_option('plug_version', PLUG_VERSION);
 			
 			//Table structure for `slots`
-			$tbl_slots = $wpdb->prefix.'slots';
+			/*$tbl_slots = $wpdb->prefix.'slots';
 			$sql_table = "DROP TABLE IF EXISTS `{$tbl_slots}`;
 			CREATE TABLE IF NOT EXISTS `{$tbl_slots}` (
 			  `slot_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -139,9 +144,10 @@ class TestPlugin
 			  `slot_id` bigint(20) unsigned NOT NULL,
 			  PRIMARY KEY (`ID`),
 			) ENGINE=InnoDB {$charset_collate};";
-			dbDelta($sql_table);
+			dbDelta($sql_table);/**/
 			
-			
+			//Add Plugin Role
+			$TestPlugin->add_user_role_and_capabilities();
 		}
 	}
 	function deactivation()
@@ -177,7 +183,6 @@ class TestPlugin
 			}
 		}
 	}
-	
 	//Find match string in array
 	function strpos($haystack, $needle, $offset = 0)
 	{
@@ -227,26 +232,33 @@ class TestPlugin
 	}
 	function add_user_role_and_capabilities()
 	{
-		global $wp, $wpdb, $wp_roles, $ARMember;
-		$role_name = "Doctor";
-		$role_slug = sanitize_title($role_name);
-		$basic_caps = array(
-			$role_slug		=> true,
+		global $wp, $wpdb, $wp_roles, $TestPlugin;
+		$role1_name = "MainUser";
+		$role1_slug = sanitize_title($role1_name);
+		$role1_caps = array(
+			$role1_slug		=> true,
+			'read'			=> true,
+			'edit_posts'	=> true,
+			'manage_subusers'	=> true,
+			'upload_files'	=> true,
+			'level_0'		=> true,
+			'level_1'		=> true,
+		);
+		//Create MainUser Role
+		add_role($role1_slug, $role1_name, $role1_caps);
+		
+		$role2_name = "SubUser";
+		$role2_slug = sanitize_title($role2_name);
+		$role2_caps = array(
+			$role2_slug		=> true,
 			'read'			=> true,
 			'edit_posts'	=> true,
 			'upload_files'	=> true,
 			'level_0'		=> true,
 			'level_1'		=> true,
 		);
-		//Create Doctor Role
-		$wp_roles->add_role($role_slug, $role_name, $basic_caps);
-		/*$user_role = $wp_roles->get_role( $role_slug );
-		if( !empty($user_role) ){
-			Set New User Default Role to 'Doctor'
-			update_option('default_role', $role_slug);
-		}
-		//echo "<pre>";print_r($wp_roles);exit;
-		/**/
+		//Create SubUser Role
+		add_role($role2_slug, $role2_name, $role2_caps);
 	}
 	function write_response( $response_data, $file_name='' )
 	{
