@@ -5,7 +5,8 @@ if (!class_exists('FrontPage'))
 	{
 		function FrontPage()
 		{
-			add_action('wp', array('FrontPage', 'FrontPage_init'), 1);
+			add_action('wp', array(&$this, 'FrontPage_init'), 1);
+			add_shortcode('shortcode1', array(&$this, 'shortcode1_func'));
 		}
 		function FrontPage_init()
 		{
@@ -36,5 +37,25 @@ if (!class_exists('FrontPage'))
 			$return .= '</div>';
 			return $return;
 		}
+		function shortcode1_func($atts, $content = "")
+		{
+			/* ---------------------/.Begin Set Shortcode Attributes--------------------- */
+			$defaults = array(
+				'Title' => __('Shortcode1 Form'),
+			);
+			//Extract Shortcode Attributes
+			$opts = shortcode_atts($defaults, $atts, 'shortcode1');
+			extract($opts);
+			/* ---------------------/.End Set Shortcode Attributes--------------------- */
+			
+			$content .= '<div class="">';
+			$content .= '';
+			$content .= '</div>';
+			
+			return do_shortcode($content);
+		}
 	}
+	
+	global $FrontPage;
+	$FrontPage = new FrontPage();
 }
