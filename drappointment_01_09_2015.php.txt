@@ -2,9 +2,8 @@
 /*
  Plugin Name: Doctor Appointment
  Description: Appointment Management
- Author: Akshay Paghdar
+ Author: Fake
  Version: 1.0
- Author URI: https://about.me/paghdarakshay
  */
 
 define( 'PLUG_DIR_NAME', 'drappointment' );
