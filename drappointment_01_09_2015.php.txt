@@ -16,6 +16,8 @@ define('PLUG_VERSION', '1.0');
 global $ajaxurl;
 $ajaxurl = admin_url('admin-ajax.php');
 
+global $DR_Appointment;
+$DR_Appointment = new DR_Appointment();
 
 if(!class_exists('DR_Appointment'))
 {
@@ -23,13 +25,113 @@ if(!class_exists('DR_Appointment'))
 	{
 		function __construct()
 		{
-			global $wp, $wpdb, $TestPlugin;
-			//register_activation_hook(__FILE__, array('DR_Appointment', 'activation'));
-			//register_deactivation_hook(__FILE__, array('DR_Appointment', 'deactivation'));
-			//register_uninstall_hook(__FILE__, array('DR_Appointment', 'uninstall'));
+
+			register_activation_hook(__FILE__, array('DR_Appointment', 'activate'));
+			register_uninstall_hook(__FILE__, array('DR_Appointment', 'uninstall'));
 			
-			//add_action('admin_menu', array(&$this, 'admin_menu'), 27);
-			require_once(PLUG_DIR . "/appointments.php");
+			add_filter('pre_option_default_role', array(&$this, 'default_role'));
+
+			add_action('parse_request', array(&$this, 'da_request_page'), 1);
+			
+			add_action('init', array(&$this, 'da_init'));
+			
+			add_action('wp_enqueue_scripts', array(&$this, 'wp_enqueue_scripts'));
+
+			add_shortcode('events', array(&$this, 'events_func'));
+		}
+		function da_request_page()
+		{
+			global $wp, $wpdb;
+			if(isset($_REQUEST['page']) && $_REQUEST['page'] == 'appointments')
+			{
+				get_header(); ?>
+					<div class="container">
+						<div class="row">
+							<div id="primary" class="content-area col-md-12">
+								<?php echo do_shortcode("[events]"); ?>
+							</div><!-- #primary -->
+						</div>
+					</div>
+				<?php get_footer();
+				exit;
+			} else {
+				return;
+			}
+		}
+		function da_init()
+		{
+			global $wp, $wpdb;
+			// Add Roles For Doctors & Patients
+			add_role('da_doctor', 'Doctor', array(
+			    'read' => true,
+			    'edit_posts' => true,
+			    'manage_patients' => true,
+			));
+			add_role('da_patient', 'Patient', array(
+			    'read' => true,
+			    'edit_posts' => true,
+			    'delete_posts' => false,
+			));
+			
+			
+		}
+		function wp_enqueue_scripts()
+		{
+			wp_enqueue_script( 'jquery' );
+			wp_enqueue_script( 'jquery-ui-core' );
+			wp_enqueue_script( 'moment', DA_URL.'js/moment.min.js', array( 'jquery' ) );
+			wp_enqueue_script( 'fullcalendar', DA_URL.'js/fullcalendar.js', array( 'jquery' ) );
+			wp_enqueue_script( 'da_scripts', DA_URL.'js/da_scripts.js', array( 'jquery' ) );
+			wp_enqueue_script( 'da_scripts', DA_URL.'js/da_scripts.js', array( 'jquery' ) );
+
+			//
+			wp_enqueue_style( 'fullcalendar_style', DA_URL.'css/fullcalendar.css');
+			//wp_enqueue_style( 'fullcalendar_print', DA_URL.'css/fullcalendar.print.css');
+			wp_enqueue_style( 'da_style', DA_URL.'css/da_style.css');
+		}
+		function events_func($atts, $content='')
+		{
+			$defaults = array(
+				'user_id' => 0,
+				'user_type' => '',
+			);
+			$atts = shortcode_atts($defaults, $atts, 'events');
+			
+			$atts['user_id'] = (!empty($atts['user_id']) && $atts['user_id']!=0) ? $atts['user_id'] : get_current_user_id();
+			
+			if(is_user_logged_in())
+			{
+				if(file_exists(DA_DIR.'/events.php'))
+				{
+					include DA_DIR.'/events.php';
+				}
+				return;
+			} else {
+				return "You need to login to view this page.";
+			}
+		}
+
+		function activate() {
+			$da_version = get_option('DA_VERSION');
+			if(empty($da_version))
+			{
+				update_option('DA_VERSION', DA_VERSION);
+				
+				
+			}
+		}
+		function default_role($default_role)
+		{
+			if($GLOBALS['wp_roles']->is_role( 'da_patient' ))
+			{
+				return 'da_patient';
+			}
+			return $default_role;
+		}
+		function deactivate() {}
+		function uninstall() {
+			remove_role('da_doctor');
+			remove_role('da_patient');
 		}
 		function get_free_menu_position($start, $increment = 0.1)
 		{
@@ -298,6 +400,3 @@ if(!class_exists('DR_Appointment'))
 		}
 	}
 }
-
-global $DR_Appointment;
-$DR_Appointment = new DR_Appointment();
